@@ -12,11 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
       item.classList.remove("show", "fade");
     });
 
-    let $i = 0;
-    tabs.forEach(item => {
+    tabs.forEach((item, i) => {
       item.classList.remove("tabheader__item_active");
       item.classList.add("data-index");
-      item.dataset.index = $i++;
+      item.dataset.index = i;
     });
   }
 
@@ -157,35 +156,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  new MenuCard(
-    "img/tabs/vegy.jpg",
-    "vegy",
-    'Меню "Фитнес"',
-    'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-    9,
-    '.menu .container',
-    "menu__item"
-  ).render();
+  let getResource = async url => {
+    let res = await fetch(url);
 
-  new MenuCard(
-    "img/tabs/elite.jpg",
-    "elite",
-    'Меню “Премиум”',
-    'В меню “Премиум” мы используем не только красивый дизайн упаковки, но и качественное исполнение блюд. Красная рыба, морепродукты, фрукты - ресторанное меню без похода в ресторан!',
-    9,
-    '.menu .container',
-    "menu__item"
-  ).render();
+    if(!res.ok) throw new Error("Could not fetch ${url}, status ${res.status}");
 
-  new MenuCard(
-    "img/tabs/post.jpg",
-    "post",
-    'Меню "Постное"',
-    'Меню “Постное” - это тщательный подбор ингредиентов: полное отсутствие продуктов животного происхождения, молоко из миндаля, овса, кокоса или гречки, правильное количество белков за счет тофу и импортных вегетарианских стейков.',
-    9,
-    '.menu .container',
-    "menu__item"
-  ).render();
+    return await res.json();
+  };
+
+  getResource("http://localhost:3000/menu")
+  .then(data => {
+    data.forEach(obj => {
+      new MenuCard(...Object.values(obj), ".menu .container").render();
+    });
+  })
 
   // Forms
 
@@ -196,9 +180,21 @@ document.addEventListener("DOMContentLoaded", () => {
     failure: "Что-то пошло не так..."
   }
 
-  forms.forEach(item => postData(item));
+  forms.forEach(item => bindPostData(item));
 
-  function postData(form) {
+  let postData = async (url, data) => {
+    let res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-type": "application/json"
+      },
+      body: data
+    });
+
+    return await res.json();
+  };
+
+  function bindPostData(form) {
     form.addEventListener("submit", (evt) => {
       evt.preventDefault();
 
@@ -210,17 +206,9 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
       form.insertAdjacentElement("afterend", statusMessage);
       
-      let json = {};
-      new FormData(form).forEach((val, key) => json[key] = val);
+      let json = JSON.stringify( Object.fromEntries( new FormData(form).entries() ) );
 
-      fetch("server.php", {
-        method: "POST",
-        headers: {
-          "Content-type": "application/json"
-        },
-        body: JSON.stringify(json)
-      })
-      .then(response => response.text())
+      postData("http://localhost:3000/requests", json)
       .then(response => {
         console.log(response);
         showThanksModal(message.success);
@@ -256,4 +244,48 @@ document.addEventListener("DOMContentLoaded", () => {
       hideModalWindow();
     }, 3000);
   }
+
+  // Slider 
+
+  let slides = document.querySelectorAll(".offer__slide"),
+      sliderCounter = document.querySelector(".offer__slider-counter"),
+      current = document.querySelector("#current"),
+      total = document.querySelector("#total");
+  let slideIndex = 1;
+  
+  total.textContent = slides.length < 10 ? `0${slides.length}`: slides.length;
+
+  function hideSlideContent() {
+    slides.forEach(item => {
+      item.classList.add("hide");
+      item.classList.remove("show", "fade");
+    });
+  }
+
+  function showSlideContent(i = 1) {
+    if (i > slides.length) slideIndex = 1;
+    else if (i < 1) slideIndex = slides.length;
+
+    slides[slideIndex - 1].classList.remove("hide");
+    slides[slideIndex - 1].classList.add("show", "fade");
+
+    if (slideIndex < 10) current.textContent =  `0${slideIndex}`;
+    else current.textContent =  slideIndex;
+  }
+
+  hideSlideContent();
+  showSlideContent();
+
+  sliderCounter.addEventListener("click", evt => {
+    if(evt.target.matches("div.offer__slider-prev")) {
+      slideIndex += -1;
+      hideSlideContent();
+      showSlideContent(slideIndex);
+    }
+    else if(evt.target.matches("div.offer__slider-next")) {
+      slideIndex += 1;
+      hideSlideContent();
+      showSlideContent(slideIndex);
+    }
+  });
 });
