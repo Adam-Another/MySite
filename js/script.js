@@ -245,47 +245,81 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 3000);
   }
 
-  // Slider 
+  // Slider
 
-  let slides = document.querySelectorAll(".offer__slide"),
-      sliderCounter = document.querySelector(".offer__slider-counter"),
-      current = document.querySelector("#current"),
-      total = document.querySelector("#total");
-  let slideIndex = 1;
+  // getting elements
+  let slider = document.querySelector(".offer__slider"),
+      current = slider.querySelector("#current"),
+      total = slider.querySelector("#total"),
+      slidesWrapper = slider.querySelector(".offer__slider-wrapper"),
+      slidesField = slidesWrapper.querySelector(".offer__slider-inner"),
+      slides = slidesField.querySelectorAll(".offer__slide"),
+      width = window.getComputedStyle(slidesField).width;
+  /*END*/
+
+  // default value
+  let slideIndex = 1, offset = 0;
   
-  total.textContent = slides.length < 10 ? `0${slides.length}`: slides.length;
+	if (slides.length < 10) {
+		total.textContent = `0${slides.length}`;
+		current.textContent = `0${slideIndex}`;
+	} else {
+		total.textContent = slides.length;
+		current.textContent = slideIndex;
+	}
 
-  function hideSlideContent() {
-    slides.forEach(item => {
-      item.classList.add("hide");
-      item.classList.remove("show", "fade");
-    });
+  slidesField.style.width = 100 * slides.length + "%";
+  slides.forEach(slide => slide.style.width = width);
+  /*END*/
+
+  // creating dots
+  let dotsWrapper = document.createElement("ol");
+  dotsWrapper.classList.add("carousel-indicators");
+
+  let dots = [];
+  for(let i = 1; i <= slides.length; i++) {
+    element = document.createElement("li");
+    element.classList.add("dot");
+    element.dataset.index = i;
+    dotsWrapper.append(element);
+    dots.push(element);
+  }
+  slider.append(dotsWrapper);
+  dots[slideIndex - 1].classList.add("dot-item_active");
+  /*END*/
+
+  function slideMove(type, index) {
+    switch (type) {
+      case "prev":
+        slideIndex = slideIndex == 1 ? slides.length : --slideIndex;
+        if (offset == 0) offset = +width.slice(0, width.length - 2) * (slides.length - 1);
+        else offset -= +width.slice(0, width.length - 2);
+        break;
+      case "next":
+        slideIndex = slideIndex == slides.length ? 1 : ++slideIndex;
+        if (offset == +width.slice(0, width.length - 2) * (slides.length - 1)) offset = 0;
+        else offset += +width.slice(0, width.length - 2);
+        break;
+      case "dot":
+        slideIndex = index;
+        offset = +width.slice(0, width.length - 2) * (slideIndex - 1);
+    }
+    slidesField.style.transform = `translateX(-${offset}px)`;
+    current.textContent = slideIndex < 10 ? `0${slideIndex}` : slideIndex;
+
+    dots.forEach(dot => dot.classList.remove("dot-item_active"));
+    dots[slideIndex - 1].classList.add("dot-item_active");
   }
 
-  function showSlideContent(i = 1) {
-    if (i > slides.length) slideIndex = 1;
-    else if (i < 1) slideIndex = slides.length;
-
-    slides[slideIndex - 1].classList.remove("hide");
-    slides[slideIndex - 1].classList.add("show", "fade");
-
-    if (slideIndex < 10) current.textContent =  `0${slideIndex}`;
-    else current.textContent =  slideIndex;
-  }
-
-  hideSlideContent();
-  showSlideContent();
-
-  sliderCounter.addEventListener("click", evt => {
+  slider.addEventListener("click", evt => {
     if(evt.target.matches("div.offer__slider-prev")) {
-      slideIndex += -1;
-      hideSlideContent();
-      showSlideContent(slideIndex);
+      slideMove("prev");
     }
     else if(evt.target.matches("div.offer__slider-next")) {
-      slideIndex += 1;
-      hideSlideContent();
-      showSlideContent(slideIndex);
+      slideMove("next");
+    }
+    else if(evt.target.matches("li.dot")) {
+      slideMove("dot", +evt.target.dataset.index);
     }
   });
 });
